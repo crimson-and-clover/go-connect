@@ -25,7 +25,4 @@ vendor/
 /**/.DS_Store
 /**/Thumbs.db
 
-# Project specific
-goconnect
-go-connect
-connect
+/build/
