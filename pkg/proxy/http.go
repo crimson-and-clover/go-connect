@@ -111,7 +111,7 @@ func (p *HTTPProxy) Dial(network, address string) (net.Conn, error) {
 			}
 			rest += line
 		}
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("proxy connection failed: %s %s", strings.TrimSpace(response), strings.TrimSpace(rest))
 	}
 
@@ -119,7 +119,7 @@ func (p *HTTPProxy) Dial(network, address string) (net.Conn, error) {
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			conn.Close()
+			_ = conn.Close()
 			return nil, fmt.Errorf("error reading response headers: %w", err)
 		}
 		if line == "\r\n" || line == "\n" {
@@ -133,7 +133,7 @@ func (p *HTTPProxy) Dial(network, address string) (net.Conn, error) {
 
 	// Reset deadline
 	if err := conn.SetDeadline(time.Time{}); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, err
 	}
 

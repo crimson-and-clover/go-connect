@@ -5,6 +5,8 @@
 [![Go Version](https://img.shields.io/badge/go-1.25-blue)](https://golang.org)
 [![License](https://img.shields.io/github/license/crimson-and-clover/go-connect)](LICENSE)
 [![CodeQL](https://github.com/crimson-and-clover/go-connect/actions/workflows/codeql.yml/badge.svg)](https://github.com/crimson-and-clover/go-connect/actions/workflows/codeql.yml)
+[![Stars](https://img.shields.io/github/stars/crimson-and-clover/go-connect)](https://github.com/crimson-and-clover/go-connect/stargazers)
+[![Issues](https://img.shields.io/github/issues/crimson-and-clover/go-connect)](https://github.com/crimson-and-clover/go-connect/issues)
 
 A netcat-like tool with proxy support, written in Go.
 
