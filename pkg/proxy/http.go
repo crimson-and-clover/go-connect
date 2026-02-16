@@ -79,20 +79,20 @@ func (p *HTTPProxy) Dial(network, address string) (net.Conn, error) {
 
 	// Send the request
 	if _, err := conn.Write([]byte(req)); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("failed to send CONNECT request: %w", err)
 	}
 
 	// Read the response
 	if err := conn.SetReadDeadline(time.Now().Add(timeout)); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, err
 	}
 
 	reader := bufio.NewReader(conn)
 	response, err := reader.ReadString('\n')
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("failed to read proxy response: %w", err)
 	}
 

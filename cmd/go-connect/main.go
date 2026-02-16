@@ -64,9 +64,9 @@ func runClient(opts *config.Options) error {
 			Verbose:   opts.Verbose,
 		}
 
-		dialer, err := proxy.NewDialer(opts.ProxyURL, dialerConfig)
-		if err != nil {
-			return err
+		dialer, err2 := proxy.NewDialer(opts.ProxyURL, dialerConfig)
+		if err2 != nil {
+			return err2
 		}
 
 		if opts.Verbose {
@@ -100,12 +100,12 @@ func runClient(opts *config.Options) error {
 
 	go func() {
 		defer wg.Done()
-		io.Copy(conn, os.Stdin)
+		_, _ = io.Copy(conn, os.Stdin)
 	}()
 
 	go func() {
 		defer wg.Done()
-		io.Copy(os.Stdout, conn)
+		_, _ = io.Copy(os.Stdout, conn)
 	}()
 
 	// Wait for either direction to finish or signal
@@ -204,23 +204,3 @@ func dialWithTLS(opts *config.Options) (net.Conn, error) {
 	return tlsWrapper.Wrap(conn, opts.Timeout)
 }
 
-// verboseConn wraps a connection for verbose logging.
-type verboseConn struct {
-	net.Conn
-	verbose bool
-}
-
-func (v *verboseConn) Write(p []byte) (int, error) {
-	if v.verbose {
-		fmt.Fprintf(os.Stderr, "[>] Sent %d bytes\n", len(p))
-	}
-	return v.Conn.Write(p)
-}
-
-func (v *verboseConn) Read(p []byte) (int, error) {
-	n, err := v.Conn.Read(p)
-	if err == nil && v.verbose && n > 0 {
-		fmt.Fprintf(os.Stderr, "[<] Received %d bytes\n", n)
-	}
-	return n, err
-}
