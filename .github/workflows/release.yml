@@ -29,9 +29,8 @@ jobs:
 
       - name: Build releases
         run: |
-          export BUILD_DIR=dist
-          make release
-          make checksums
+          make release BUILD_DIR=dist
+          make checksums BUILD_DIR=dist
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

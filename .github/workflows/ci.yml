@@ -80,6 +80,7 @@ jobs:
             build/go-connect-linux-amd64
             build/go-connect-linux-arm64
             build/go-connect-windows-amd64.exe
+            build/go-connect-windows-arm64.exe
             build/go-connect-darwin-amd64
             build/go-connect-darwin-arm64
             build/go-connect-freebsd-amd64
