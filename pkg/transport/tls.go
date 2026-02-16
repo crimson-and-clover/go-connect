@@ -47,12 +47,12 @@ func (t *TLSWrapper) Wrap(conn net.Conn, timeout time.Duration) (net.Conn, error
 	}
 
 	if err := tlsConn.Handshake(); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("TLS handshake failed: %w", err)
 	}
 
 	if err := tlsConn.SetDeadline(time.Time{}); err != nil {
-		tlsConn.Close()
+		_ = tlsConn.Close()
 		return nil, err
 	}
 

@@ -52,7 +52,7 @@ func NewTimeoutDialer(conn net.Conn, readTimeout, writeTimeout time.Duration) *T
 
 // Read implements io.Reader with timeout.
 func (t *TimeoutDialer) Read(p []byte) (int, error) {
-	if err := t.Conn.SetReadDeadline(time.Now().Add(t.readTimeout)); err != nil {
+	if err := t.SetReadDeadline(time.Now().Add(t.readTimeout)); err != nil {
 		return 0, err
 	}
 	return t.Conn.Read(p)
@@ -60,7 +60,7 @@ func (t *TimeoutDialer) Read(p []byte) (int, error) {
 
 // Write implements io.Writer with timeout.
 func (t *TimeoutDialer) Write(p []byte) (int, error) {
-	if err := t.Conn.SetWriteDeadline(time.Now().Add(t.writeTimeout)); err != nil {
+	if err := t.SetWriteDeadline(time.Now().Add(t.writeTimeout)); err != nil {
 		return 0, err
 	}
 	return t.Conn.Write(p)

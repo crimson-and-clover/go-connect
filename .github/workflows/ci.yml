@@ -40,6 +40,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Debug directory structure
+        run: |
+          pwd
+          ls -la
+          ls -la cmd/ || echo "cmd/ not found"
+
       - name: Set up Go
         uses: actions/setup-go@v6
         with:

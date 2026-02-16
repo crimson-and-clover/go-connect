@@ -59,12 +59,12 @@ func (p *HTTPSProxy) Dial(network, address string) (net.Conn, error) {
 
 	tlsConn := tls.Client(plainConn, tlsConfig)
 	if err := tlsConn.SetDeadline(time.Now().Add(timeout)); err != nil {
-		plainConn.Close()
+		_ = plainConn.Close()
 		return nil, err
 	}
 
 	if err := tlsConn.Handshake(); err != nil {
-		tlsConn.Close()
+		_ = tlsConn.Close()
 		return nil, fmt.Errorf("TLS handshake failed: %w", err)
 	}
 

@@ -103,7 +103,7 @@ func (s *Scanner) scanPort(port int) ScanResult {
 			Latency: latency,
 		}
 	}
-	conn.Close()
+	_ = conn.Close()
 
 	return ScanResult{
 		Port:    port,
@@ -133,6 +133,6 @@ func CheckSinglePort(host string, port int, timeout time.Duration) bool {
 	if err != nil {
 		return false
 	}
-	conn.Close()
+	_ = conn.Close()
 	return true
 }

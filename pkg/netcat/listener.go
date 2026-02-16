@@ -31,7 +31,7 @@ func (l *Listener) Listen() error {
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", address, err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	fmt.Fprintf(os.Stderr, "Listening on port %d...\n", l.port)
 
@@ -65,7 +65,7 @@ func (l *Listener) Listen() error {
 
 // handleConnection handles a single client connection.
 func (l *Listener) handleConnection(conn net.Conn) error {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	if l.verbose {
 		fmt.Fprintf(os.Stderr, "Connection from %s\n", conn.RemoteAddr())
@@ -83,12 +83,12 @@ func (l *Listener) handleConnection(conn net.Conn) error {
 
 	go func() {
 		defer wg.Done()
-		io.Copy(conn, os.Stdin)
+		_, _ = io.Copy(conn, os.Stdin)
 	}()
 
 	go func() {
 		defer wg.Done()
-		io.Copy(os.Stdout, conn)
+		_, _ = io.Copy(os.Stdout, conn)
 	}()
 
 	done := make(chan struct{})
@@ -119,7 +119,7 @@ func (l *Listener) ListenAndServe(single bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", address, err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	fmt.Fprintf(os.Stderr, "Listening on port %d...\n", l.port)
 
@@ -155,7 +155,7 @@ func (l *Listener) ListenAndServe(single bool) error {
 			if single {
 				return l.handleConnection(conn)
 			}
-			go l.handleConnection(conn)
+			go func() { _ = l.handleConnection(conn) }()
 		}
 	}
 }
