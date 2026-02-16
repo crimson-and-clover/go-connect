@@ -102,17 +102,17 @@ func (p *HTTPSProxy) doConnect(conn net.Conn, address string, timeout time.Durat
 	}
 
 	if err := conn.SetWriteDeadline(time.Now().Add(timeout)); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, err
 	}
 
 	if _, err := conn.Write([]byte(req)); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("failed to send CONNECT request: %w", err)
 	}
 
 	if err := conn.SetReadDeadline(time.Now().Add(timeout)); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, err
 	}
 
@@ -120,7 +120,7 @@ func (p *HTTPSProxy) doConnect(conn net.Conn, address string, timeout time.Durat
 	buf := make([]byte, 4096)
 	n, err := conn.Read(buf)
 	if err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("failed to read proxy response: %w", err)
 	}
 
@@ -130,7 +130,7 @@ func (p *HTTPSProxy) doConnect(conn net.Conn, address string, timeout time.Durat
 	}
 
 	if !strings.Contains(response, "200") {
-		conn.Close()
+		_ = conn.Close()
 		return nil, fmt.Errorf("proxy connection failed: %s", strings.Split(response, "\n")[0])
 	}
 
@@ -140,7 +140,7 @@ func (p *HTTPSProxy) doConnect(conn net.Conn, address string, timeout time.Durat
 
 	// Reset deadlines
 	if err := conn.SetDeadline(time.Time{}); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		return nil, err
 	}
 
