@@ -1,1 +1,31 @@
-/connect.exe
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go vendor directory
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+/**/.DS_Store
+/**/Thumbs.db
+
+# Project specific
+goconnect
+go-connect
+connect

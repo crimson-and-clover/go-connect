@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    branches: [master]
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+          args: --timeout=5m
+
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        go-version: ['1.25']
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ matrix.go-version }}
+          cache: true
+
+      - name: Download dependencies
+        run: make deps
+
+      - name: Build
+        run: make build
+
+      - name: Test
+        run: make test
+
+  build-cross-platform:
+    name: Cross Platform Build
+    runs-on: ubuntu-24.04
+    needs: [lint, build]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+          cache: true
+
+      - name: Build all platforms
+        run: make release
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: binaries
+          path: |
+            build/go-connect-linux-amd64
+            build/go-connect-linux-arm64
+            build/go-connect-windows-amd64.exe
+            build/go-connect-darwin-amd64
+            build/go-connect-darwin-arm64
+            build/go-connect-freebsd-amd64
