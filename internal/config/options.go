@@ -24,6 +24,7 @@ type Options struct {
 	ShowVersion        bool
 	HexDump            bool // Hex dump incoming/outgoing traffic
 	UnixSocket         bool // Use Unix Domain Socket (-U)
+	UDPMode            bool // Use UDP mode (-u)
 	TargetHost         string
 	TargetPort         string
 	ScanPorts          []int // Parsed ports for scan mode
@@ -47,6 +48,7 @@ func ParseArgs(arguments []string) (*Options, error) {
 	fs.BoolVar(&opts.HexDump, "X", false, "Hex dump incoming and outgoing traffic")
 	fs.BoolVar(&opts.HexDump, "C", false, "Hex dump incoming and outgoing traffic (alias)")
 	fs.BoolVar(&opts.UnixSocket, "U", false, "Use Unix Domain Socket")
+	fs.BoolVar(&opts.UDPMode, "u", false, "Use UDP mode")
 	fs.BoolVar(&opts.ZeroMode, "z", false, "Zero I/O mode (port scanning)")
 	fs.BoolVar(&opts.ListenMode, "l", false, "Listen mode")
 	fs.IntVar(&opts.ListenPort, "p", 0, "Port to listen on")
@@ -55,10 +57,12 @@ func ParseArgs(arguments []string) (*Options, error) {
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] host port\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "       %s -u [options] host port\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "       %s -U [options] socket_path\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "       %s -l -U [options] socket_path\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "       %s -z [options] host port(s)...\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "       %s -l -p port\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "       %s -l -u -p port\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "       %s -l -U socket_path\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "       %s -z [options] host port(s)...\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "\nOptions:\n")
 		fs.PrintDefaults()
 	}

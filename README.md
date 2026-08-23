@@ -117,6 +117,16 @@ echo -e "GET /v1.41/containers/json HTTP/1.0\r\n\r\n" | go-connect -U /var/run/d
 go-connect -l -U /tmp/test.sock
 ```
 
+### UDP Mode
+
+```bash
+# Send UDP datagram / connect
+echo "hello udp" | go-connect -u 127.0.0.1 5353
+
+# Listen on UDP port 5353
+go-connect -l -u -p 5353 -v
+```
+
 ## Options
 
 | Option | Description |
@@ -126,6 +136,7 @@ go-connect -l -U /tmp/test.sock
 | `-k` | Skip TLS certificate verification |
 | `-t duration` | Connection timeout (default: 30s) |
 | `-v` | Verbose output |
+| `-u` | Use UDP mode |
 | `-U` | Use Unix Domain Socket |
 | `-z` | Zero I/O mode (port scanning) |
 | `-l` | Listen mode |

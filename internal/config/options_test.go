@@ -50,6 +50,7 @@ func TestParseArgs(t *testing.T) {
 		wantVerb  bool
 		wantHex   bool
 		wantUnix  bool
+		wantUDP   bool
 		wantZero  bool
 		wantList  bool
 		wantLPort int
@@ -61,6 +62,22 @@ func TestParseArgs(t *testing.T) {
 			wantHost: "example.com",
 			wantPort: "80",
 			wantTout: 30 * time.Second,
+		},
+		{
+			name:     "udp client connection",
+			args:     []string{"-u", "8.8.8.8", "53"},
+			wantHost: "8.8.8.8",
+			wantPort: "53",
+			wantUDP:  true,
+			wantTout: 30 * time.Second,
+		},
+		{
+			name:      "udp listener mode",
+			args:      []string{"-l", "-u", "-p", "5353"},
+			wantList:  true,
+			wantUDP:   true,
+			wantLPort: 5353,
+			wantTout:  30 * time.Second,
 		},
 		{
 			name:     "unix socket client connection",
@@ -177,6 +194,9 @@ func TestParseArgs(t *testing.T) {
 			}
 			if opts.UnixSocket != tt.wantUnix {
 				t.Errorf("UnixSocket = %v, want %v", opts.UnixSocket, tt.wantUnix)
+			}
+			if opts.UDPMode != tt.wantUDP {
+				t.Errorf("UDPMode = %v, want %v", opts.UDPMode, tt.wantUDP)
 			}
 			if opts.ZeroMode != tt.wantZero {
 				t.Errorf("ZeroMode = %v, want %v", opts.ZeroMode, tt.wantZero)

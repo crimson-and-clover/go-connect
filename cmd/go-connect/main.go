@@ -35,6 +35,14 @@ func main() {
 	}
 
 	if opts.ListenMode {
+		if opts.UDPMode {
+			if err := netcat.RunUDPListener(opts.ListenPort, opts.Verbose, opts.HexDump); err != nil {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+				os.Exit(1)
+			}
+			return
+		}
+
 		var listener *netcat.Listener
 		if opts.UnixSocket {
 			listener = netcat.NewUnixListener(opts.TargetHost, opts.Verbose, opts.HexDump)
@@ -50,6 +58,14 @@ func main() {
 
 	if opts.ZeroMode {
 		if err := runScanMode(opts); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if opts.UDPMode {
+		if err := netcat.RunUDPClient(opts.TargetAddress(), opts.Timeout, opts.Verbose, opts.HexDump); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
 		}
@@ -192,6 +208,9 @@ func runScanMode(opts *config.Options) error {
 	}
 
 	scanner := netcat.NewScanner(opts.TargetHost, ports, timeout, opts.Verbose, dialer)
+	if opts.UDPMode {
+		scanner.SetNetwork("udp")
+	}
 	results := scanner.Scan()
 	scanner.PrintResults(results)
 

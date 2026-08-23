@@ -27,6 +27,7 @@ type ScanResult struct {
 // Scanner provides port scanning functionality.
 type Scanner struct {
 	host    string
+	network string
 	ports   []int
 	timeout time.Duration
 	verbose bool
@@ -67,12 +68,18 @@ func NewScanner(host string, ports []int, timeout time.Duration, verbose bool, d
 
 	return &Scanner{
 		host:    host,
+		network: "tcp",
 		ports:   sortedPorts,
 		timeout: timeout,
 		verbose: verbose,
 		workers: workers,
 		dialer:  dialer,
 	}
+}
+
+// SetNetwork sets the scanning network ("tcp" or "udp").
+func (s *Scanner) SetNetwork(network string) {
+	s.network = network
 }
 
 // NewRangeScanner creates a new port scanner for a continuous range of ports.
@@ -136,7 +143,12 @@ func (s *Scanner) scanPort(port int) ScanResult {
 	address := net.JoinHostPort(s.host, strconv.Itoa(port))
 	start := time.Now()
 
-	conn, err := s.dialer.Dial("tcp", address)
+	network := s.network
+	if network == "" {
+		network = "tcp"
+	}
+
+	conn, err := s.dialer.Dial(network, address)
 	latency := time.Since(start)
 
 	if err != nil {
