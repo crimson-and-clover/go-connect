@@ -16,9 +16,9 @@ type Dialer interface {
 
 // Config holds configuration for creating a dialer.
 type Config struct {
-	Timeout   time.Duration
-	TLSVerify bool
-	Verbose   bool
+	Timeout            time.Duration
+	InsecureSkipVerify bool
+	Verbose            bool
 }
 
 // NewDialer creates a Dialer based on the proxy URL.

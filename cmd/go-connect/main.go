@@ -18,11 +18,21 @@ import (
 	"github.com/crimson-and-clover/go-connect/pkg/transport"
 )
 
+var (
+	version   = "dev"
+	buildTime = "unknown"
+)
+
 func main() {
 	opts, err := config.Parse()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
+	}
+
+	if opts.ShowVersion {
+		fmt.Printf("go-connect version %s (%s)\n", version, buildTime)
+		return
 	}
 
 	if opts.ListenMode {
@@ -58,9 +68,9 @@ func runClient(opts *config.Options) error {
 	} else {
 		// Create dialer based on proxy configuration
 		dialerConfig := proxy.Config{
-			Timeout:   opts.Timeout,
-			TLSVerify: !opts.TLSVerify, // -k means skip verification
-			Verbose:   opts.Verbose,
+			Timeout:            opts.Timeout,
+			InsecureSkipVerify: opts.InsecureSkipVerify,
+			Verbose:            opts.Verbose,
 		}
 
 		dialer, err2 := proxy.NewDialer(opts.ProxyURL, dialerConfig)
@@ -172,16 +182,16 @@ func dialWithTLS(opts *config.Options) (net.Conn, error) {
 			opts.TargetAddress(),
 			opts.Timeout,
 			opts.TargetHost,
-			opts.TLSVerify,
+			opts.InsecureSkipVerify,
 			opts.Verbose,
 		)
 	}
 
 	// First connect through proxy, then wrap with TLS
 	dialerConfig := proxy.Config{
-		Timeout:   opts.Timeout,
-		TLSVerify: !opts.TLSVerify,
-		Verbose:   opts.Verbose,
+		Timeout:            opts.Timeout,
+		InsecureSkipVerify: opts.InsecureSkipVerify,
+		Verbose:            opts.Verbose,
 	}
 
 	dialer, err := proxy.NewDialer(opts.ProxyURL, dialerConfig)
@@ -200,7 +210,7 @@ func dialWithTLS(opts *config.Options) (net.Conn, error) {
 	}
 
 	// Wrap the connection with TLS
-	tlsWrapper := transport.NewTLSWrapper(opts.TargetHost, opts.TLSVerify, opts.Verbose)
+	tlsWrapper := transport.NewTLSWrapper(opts.TargetHost, opts.InsecureSkipVerify, opts.Verbose)
 	return tlsWrapper.Wrap(conn, opts.Timeout)
 }
 

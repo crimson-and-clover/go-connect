@@ -10,18 +10,17 @@ import (
 
 // Options holds all command-line options.
 type Options struct {
-	ProxyURL   string
-	TLSEnable  bool
-	TLSVerify  bool
-	Timeout    time.Duration
-	Verbose    bool
-	ZeroMode   bool // Port scanning mode
-	ListenMode bool
-	ListenPort int
-	SourceAddr string
-	QuitDelay  time.Duration
-	TargetHost string
-	TargetPort string
+	ProxyURL           string
+	TLSEnable          bool
+	InsecureSkipVerify bool // Skip TLS certificate verification (-k)
+	Timeout            time.Duration
+	Verbose            bool
+	ZeroMode           bool // Port scanning mode
+	ListenMode         bool
+	ListenPort         int
+	ShowVersion        bool
+	TargetHost         string
+	TargetPort         string
 }
 
 // Parse parses command-line arguments and returns Options.
@@ -30,14 +29,14 @@ func Parse() (*Options, error) {
 
 	flag.StringVar(&opts.ProxyURL, "x", "", "Proxy URL (http://host:port, socks5://host:port, etc.)")
 	flag.BoolVar(&opts.TLSEnable, "T", false, "Enable TLS")
-	flag.BoolVar(&opts.TLSVerify, "k", false, "Skip TLS certificate verification")
+	flag.BoolVar(&opts.InsecureSkipVerify, "k", false, "Skip TLS certificate verification")
 	flag.DurationVar(&opts.Timeout, "t", 30*time.Second, "Connection timeout")
 	flag.BoolVar(&opts.Verbose, "v", false, "Verbose output")
 	flag.BoolVar(&opts.ZeroMode, "z", false, "Zero I/O mode (port scanning)")
 	flag.BoolVar(&opts.ListenMode, "l", false, "Listen mode")
 	flag.IntVar(&opts.ListenPort, "p", 0, "Port to listen on")
-	flag.StringVar(&opts.SourceAddr, "s", "", "Source address")
-	flag.DurationVar(&opts.QuitDelay, "q", 0, "Quit after EOF on stdin (with delay)")
+	flag.BoolVar(&opts.ShowVersion, "V", false, "Show version")
+	flag.BoolVar(&opts.ShowVersion, "version", false, "Show version")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] host port\n", os.Args[0])
@@ -50,6 +49,10 @@ func Parse() (*Options, error) {
 	wFlag := flag.Duration("w", 0, "Timeout (alias, nc compatible)")
 
 	flag.Parse()
+
+	if opts.ShowVersion {
+		return opts, nil
+	}
 
 	// If -w was explicitly set (non-zero), use it instead of -t
 	if *wFlag != 0 {

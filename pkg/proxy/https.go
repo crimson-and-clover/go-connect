@@ -53,7 +53,7 @@ func (p *HTTPSProxy) Dial(network, address string) (net.Conn, error) {
 	// Wrap with TLS
 	tlsConfig := &tls.Config{
 		ServerName:         p.proxyURL.Hostname(),
-		InsecureSkipVerify: !p.config.TLSVerify,
+		InsecureSkipVerify: p.config.InsecureSkipVerify,
 	}
 
 	tlsConn := tls.Client(plainConn, tlsConfig)
