@@ -34,24 +34,28 @@ type Scanner struct {
 	dialer  Dialer
 }
 
-// NewScanner creates a new port scanner.
-func NewScanner(host string, startPort, endPort int, timeout time.Duration, verbose bool, dialer Dialer) *Scanner {
+// NewScanner creates a new port scanner from a list of ports.
+func NewScanner(host string, ports []int, timeout time.Duration, verbose bool, dialer Dialer) *Scanner {
 	if timeout == 0 {
 		timeout = 2 * time.Second
 	}
 
-	portsCount := endPort - startPort + 1
-	if portsCount < 1 {
-		portsCount = 1
+	// Deduplicate and filter ports
+	portMap := make(map[int]struct{}, len(ports))
+	for _, p := range ports {
+		if p >= 1 && p <= 65535 {
+			portMap[p] = struct{}{}
+		}
 	}
-	ports := make([]int, 0, portsCount)
-	for p := startPort; p <= endPort; p++ {
-		ports = append(ports, p)
+	sortedPorts := make([]int, 0, len(portMap))
+	for p := range portMap {
+		sortedPorts = append(sortedPorts, p)
 	}
+	sort.Ints(sortedPorts)
 
 	workers := 100
-	if len(ports) < workers {
-		workers = len(ports)
+	if len(sortedPorts) < workers {
+		workers = len(sortedPorts)
 	}
 	if workers < 1 {
 		workers = 1
@@ -63,7 +67,7 @@ func NewScanner(host string, startPort, endPort int, timeout time.Duration, verb
 
 	return &Scanner{
 		host:    host,
-		ports:   ports,
+		ports:   sortedPorts,
 		timeout: timeout,
 		verbose: verbose,
 		workers: workers,
@@ -71,9 +75,21 @@ func NewScanner(host string, startPort, endPort int, timeout time.Duration, verb
 	}
 }
 
+// NewRangeScanner creates a new port scanner for a continuous range of ports.
+func NewRangeScanner(host string, startPort, endPort int, timeout time.Duration, verbose bool, dialer Dialer) *Scanner {
+	if startPort > endPort {
+		startPort, endPort = endPort, startPort
+	}
+	ports := make([]int, 0, endPort-startPort+1)
+	for p := startPort; p <= endPort; p++ {
+		ports = append(ports, p)
+	}
+	return NewScanner(host, ports, timeout, verbose, dialer)
+}
+
 // NewSinglePortScanner creates a scanner for a single port check.
 func NewSinglePortScanner(host string, port int, timeout time.Duration, verbose bool, dialer Dialer) *Scanner {
-	return NewScanner(host, port, port, timeout, verbose, dialer)
+	return NewScanner(host, []int{port}, timeout, verbose, dialer)
 }
 
 // Scan performs the port scan and returns sorted results.

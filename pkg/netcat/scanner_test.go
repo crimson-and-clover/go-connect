@@ -28,7 +28,7 @@ func TestScannerSortAndDetection(t *testing.T) {
 	startPort := openPort - 2
 	endPort := openPort + 2
 
-	scanner := NewScanner("127.0.0.1", startPort, endPort, 500*time.Millisecond, false, nil)
+	scanner := NewRangeScanner("127.0.0.1", startPort, endPort, 500*time.Millisecond, false, nil)
 	results := scanner.Scan()
 
 	if len(results) != endPort-startPort+1 {
@@ -52,6 +52,22 @@ func TestScannerSortAndDetection(t *testing.T) {
 
 	if !foundOpen {
 		t.Errorf("open port %d was not found in scan results", openPort)
+	}
+
+	// Test slice scanner with discrete unordered ports
+	discreteScanner := NewScanner("127.0.0.1", []int{openPort + 5, openPort, openPort + 2}, 500*time.Millisecond, false, nil)
+	discreteResults := discreteScanner.Scan()
+	if len(discreteResults) != 3 {
+		t.Fatalf("expected 3 results, got %d", len(discreteResults))
+	}
+	if discreteResults[0].Port != openPort || !discreteResults[0].Open {
+		t.Errorf("first result expected to be open port %d, got %v", openPort, discreteResults[0])
+	}
+	if discreteResults[1].Port != openPort+2 {
+		t.Errorf("second result expected port %d, got %d", openPort+2, discreteResults[1].Port)
+	}
+	if discreteResults[2].Port != openPort+5 {
+		t.Errorf("third result expected port %d, got %d", openPort+5, discreteResults[2].Port)
 	}
 }
 

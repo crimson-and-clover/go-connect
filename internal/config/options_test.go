@@ -102,6 +102,13 @@ func TestParseArgs(t *testing.T) {
 			wantZero: true,
 		},
 		{
+			name:     "scan mode with composite ports",
+			args:     []string{"-z", "example.com", "22,80,443", "8080-8082"},
+			wantHost: "example.com",
+			wantPort: "22-8082",
+			wantZero: true,
+		},
+		{
 			name:    "listen mode missing port error",
 			args:    []string{"-l"},
 			wantErr: true,
@@ -172,5 +179,65 @@ func TestVersionFlag(t *testing.T) {
 	}
 	if !opts.ShowVersion {
 		t.Errorf("ShowVersion = %v, want true", opts.ShowVersion)
+	}
+}
+
+func TestParsePortSpecs(t *testing.T) {
+	tests := []struct {
+		name      string
+		specs     []string
+		wantPorts []int
+		wantErr   bool
+	}{
+		{
+			name:      "single port",
+			specs:     []string{"80"},
+			wantPorts: []int{80},
+		},
+		{
+			name:      "comma separated and range mixed with deduplication",
+			specs:     []string{"80,443", "80-82", "443,8080"},
+			wantPorts: []int{80, 81, 82, 443, 8080},
+		},
+		{
+			name:    "empty specs error",
+			specs:   []string{},
+			wantErr: true,
+		},
+		{
+			name:    "invalid port range (start > end)",
+			specs:   []string{"100-80"},
+			wantErr: true,
+		},
+		{
+			name:    "port out of range (>65535)",
+			specs:   []string{"70000"},
+			wantErr: true,
+		},
+		{
+			name:    "invalid port string",
+			specs:   []string{"abc"},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ParsePortSpecs(tt.specs)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("ParsePortSpecs() error = %v, wantErr %v", err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+			if len(got) != len(tt.wantPorts) {
+				t.Fatalf("got %d ports, want %d", len(got), len(tt.wantPorts))
+			}
+			for i := range got {
+				if got[i] != tt.wantPorts[i] {
+					t.Errorf("got[%d] = %d, want %d", i, got[i], tt.wantPorts[i])
+				}
+			}
+		})
 	}
 }

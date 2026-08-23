@@ -93,6 +93,10 @@ go-connect -z -v target.example.com 443
 
 # Scan port range
 go-connect -z -v -w 1s target.example.com 1-1000
+
+# Scan multiple discrete and range ports (comma or space separated)
+go-connect -z -v -w 500ms target.example.com 22,80,443,8000-8010,3306
+go-connect -z -v -w 500ms target.example.com 22 80 443 8080
 ```
 
 ### Listen Mode

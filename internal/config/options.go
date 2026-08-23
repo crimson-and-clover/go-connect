@@ -5,6 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -22,6 +25,7 @@ type Options struct {
 	HexDump            bool // Hex dump incoming/outgoing traffic
 	TargetHost         string
 	TargetPort         string
+	ScanPorts          []int // Parsed ports for scan mode
 }
 
 // Parse parses command-line arguments and returns Options.
@@ -49,6 +53,7 @@ func ParseArgs(arguments []string) (*Options, error) {
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] host port\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "       %s -z [options] host port(s)...\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "       %s -l -p port\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "\nOptions:\n")
 		fs.PrintDefaults()
@@ -77,18 +82,30 @@ func ParseArgs(arguments []string) (*Options, error) {
 		return opts, nil
 	}
 
-	// Validate target host and port
 	args := fs.Args()
-	if opts.ZeroMode && len(args) >= 2 {
-		// Port scanning mode can have host and port range
+	if opts.ZeroMode {
+		if len(args) < 2 {
+			return nil, fmt.Errorf("scan mode requires target host and port(s)")
+		}
 		opts.TargetHost = args[0]
-		opts.TargetPort = args[1]
-	} else if len(args) != 2 {
-		return nil, fmt.Errorf("requires target host and port")
-	} else {
-		opts.TargetHost = args[0]
-		opts.TargetPort = args[1]
+		ports, err := ParsePortSpecs(args[1:])
+		if err != nil {
+			return nil, err
+		}
+		opts.ScanPorts = ports
+		if len(ports) == 1 {
+			opts.TargetPort = strconv.Itoa(ports[0])
+		} else {
+			opts.TargetPort = fmt.Sprintf("%d-%d", ports[0], ports[len(ports)-1])
+		}
+		return opts, nil
 	}
+
+	if len(args) != 2 {
+		return nil, fmt.Errorf("requires target host and port")
+	}
+	opts.TargetHost = args[0]
+	opts.TargetPort = args[1]
 
 	// Validate port
 	if opts.TargetPort != "" {
@@ -102,6 +119,67 @@ func ParseArgs(arguments []string) (*Options, error) {
 	}
 
 	return opts, nil
+}
+
+// ParsePortSpecs parses a slice of port specifications (e.g. ["80", "443", "8000-8010,9000"])
+// and returns a deduplicated, sorted slice of valid port numbers.
+func ParsePortSpecs(specs []string) ([]int, error) {
+	if len(specs) == 0 {
+		return nil, fmt.Errorf("no ports specified")
+	}
+
+	portMap := make(map[int]struct{})
+
+	for _, spec := range specs {
+		parts := strings.Split(spec, ",")
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			if part == "" {
+				continue
+			}
+
+			if strings.Contains(part, "-") {
+				rangeParts := strings.Split(part, "-")
+				if len(rangeParts) != 2 {
+					return nil, fmt.Errorf("invalid port range: %s", part)
+				}
+				start, err := strconv.Atoi(strings.TrimSpace(rangeParts[0]))
+				if err != nil {
+					return nil, fmt.Errorf("invalid start port in range: %s", rangeParts[0])
+				}
+				end, err := strconv.Atoi(strings.TrimSpace(rangeParts[1]))
+				if err != nil {
+					return nil, fmt.Errorf("invalid end port in range: %s", rangeParts[1])
+				}
+				if start < 1 || end > 65535 || start > end {
+					return nil, fmt.Errorf("port range out of bounds (1-65535): %d-%d", start, end)
+				}
+				for p := start; p <= end; p++ {
+					portMap[p] = struct{}{}
+				}
+			} else {
+				port, err := strconv.Atoi(part)
+				if err != nil {
+					return nil, fmt.Errorf("invalid port: %s", part)
+				}
+				if port < 1 || port > 65535 {
+					return nil, fmt.Errorf("port out of range (1-65535): %d", port)
+				}
+				portMap[port] = struct{}{}
+			}
+		}
+	}
+
+	if len(portMap) == 0 {
+		return nil, fmt.Errorf("no valid ports found")
+	}
+
+	ports := make([]int, 0, len(portMap))
+	for p := range portMap {
+		ports = append(ports, p)
+	}
+	sort.Ints(ports)
+	return ports, nil
 }
 
 // TargetAddress returns the full target address (host:port).

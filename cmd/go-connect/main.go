@@ -7,8 +7,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -148,23 +146,13 @@ func runClient(opts *config.Options) error {
 
 // runScanMode runs port scanning mode.
 func runScanMode(opts *config.Options) error {
-	// Parse port range
-	ports := strings.Split(opts.TargetPort, "-")
-	startPort, err := strconv.Atoi(ports[0])
-	if err != nil {
-		return fmt.Errorf("invalid start port: %s", ports[0])
-	}
-
-	endPort := startPort
-	if len(ports) > 1 {
-		endPort, err = strconv.Atoi(ports[1])
+	ports := opts.ScanPorts
+	if len(ports) == 0 {
+		var err error
+		ports, err = config.ParsePortSpecs([]string{opts.TargetPort})
 		if err != nil {
-			return fmt.Errorf("invalid end port: %s", ports[1])
+			return err
 		}
-	}
-
-	if startPort < 1 || endPort > 65535 || startPort > endPort {
-		return fmt.Errorf("invalid port range: %d-%d", startPort, endPort)
 	}
 
 	timeout := opts.Timeout
@@ -185,15 +173,15 @@ func runScanMode(opts *config.Options) error {
 
 	if opts.Verbose {
 		if opts.ProxyURL != "" {
-			fmt.Fprintf(os.Stderr, "Scanning %s ports %d-%d via %s (timeout: %v)...\n",
-				opts.TargetHost, startPort, endPort, opts.ProxyURL, timeout)
+			fmt.Fprintf(os.Stderr, "Scanning %s (%d ports) via %s (timeout: %v)...\n",
+				opts.TargetHost, len(ports), opts.ProxyURL, timeout)
 		} else {
-			fmt.Fprintf(os.Stderr, "Scanning %s ports %d-%d (timeout: %v)...\n",
-				opts.TargetHost, startPort, endPort, timeout)
+			fmt.Fprintf(os.Stderr, "Scanning %s (%d ports, timeout: %v)...\n",
+				opts.TargetHost, len(ports), timeout)
 		}
 	}
 
-	scanner := netcat.NewScanner(opts.TargetHost, startPort, endPort, timeout, opts.Verbose, dialer)
+	scanner := netcat.NewScanner(opts.TargetHost, ports, timeout, opts.Verbose, dialer)
 	results := scanner.Scan()
 	scanner.PrintResults(results)
 
