@@ -18,7 +18,7 @@ func TestUDPCommunication(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to start UDP server: %v", err)
 	}
-	defer serverConn.Close()
+	defer func() { _ = serverConn.Close() }()
 
 	serverPort := serverConn.LocalAddr().(*net.UDPAddr).Port
 
@@ -44,7 +44,7 @@ func TestUDPCommunication(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to dial UDP: %v", err)
 	}
-	defer clientConn.Close()
+	defer func() { _ = clientConn.Close() }()
 
 	_, err = clientConn.Write([]byte("PING UDP"))
 	if err != nil {

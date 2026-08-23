@@ -13,8 +13,8 @@ import (
 
 func TestBufferedConn(t *testing.T) {
 	server, client := net.Pipe()
-	defer server.Close()
-	defer client.Close()
+	defer func() { _ = server.Close() }()
+	defer func() { _ = client.Close() }()
 
 	bufferedData := "pre-buffered content\n"
 	buf := bytes.NewBufferString(bufferedData)
@@ -95,7 +95,7 @@ func TestHTTPConnect_ServerSpeaksFirst_NoBufferLoss(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to start mock proxy listener: %v", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	proxyAddr := ln.Addr().String()
 	sshBanner := "SSH-2.0-OpenSSH_9.0\r\n"
@@ -105,7 +105,7 @@ func TestHTTPConnect_ServerSpeaksFirst_NoBufferLoss(t *testing.T) {
 		if err != nil {
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 
 		// Read CONNECT request
 		buf := make([]byte, 1024)
@@ -130,7 +130,7 @@ func TestHTTPConnect_ServerSpeaksFirst_NoBufferLoss(t *testing.T) {
 	if err != nil {
 		t.Fatalf("httpProxy.Dial failed: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	// Read initial banner from target through proxy
 	bannerBuf := make([]byte, len(sshBanner))

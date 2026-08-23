@@ -57,14 +57,14 @@ func TestTLSWrapper(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to start TLS listener: %v", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	go func() {
 		conn, err := ln.Accept()
 		if err != nil {
 			return
 		}
-		defer conn.Close()
+		defer func() { _ = conn.Close() }()
 		_, _ = conn.Write([]byte("HELLO TLS\n"))
 	}()
 
@@ -73,7 +73,7 @@ func TestTLSWrapper(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DialAndWrap failed: %v", err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	buf := make([]byte, 10)
 	n, err := conn.Read(buf)

@@ -39,7 +39,7 @@ func (h *HexDumpWriter) Write(p []byte) (int, error) {
 	n, err := h.w.Write(p)
 	if n > 0 {
 		h.mu.Lock()
-		fmt.Fprintf(h.dumpOut, "\n%s (%d bytes):\n%s", h.prefix, n, hex.Dump(p[:n]))
+		_, _ = fmt.Fprintf(h.dumpOut, "\n%s (%d bytes):\n%s", h.prefix, n, hex.Dump(p[:n]))
 		h.mu.Unlock()
 	}
 	return n, err

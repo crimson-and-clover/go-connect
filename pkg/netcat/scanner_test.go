@@ -13,7 +13,7 @@ func TestScannerSortAndDetection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to start test listener: %v", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	_, portStr, err := net.SplitHostPort(ln.Addr().String())
 	if err != nil {
@@ -76,7 +76,7 @@ func TestCheckSinglePort(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to start test listener: %v", err)
 	}
-	defer ln.Close()
+	defer func() { _ = ln.Close() }()
 
 	_, portStr, _ := net.SplitHostPort(ln.Addr().String())
 	openPort, _ := strconv.Atoi(portStr)
