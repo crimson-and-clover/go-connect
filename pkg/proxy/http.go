@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -51,10 +52,13 @@ func (p *HTTPProxy) Dial(network, address string) (net.Conn, error) {
 		return nil, fmt.Errorf("failed to connect to proxy %s: %w", proxyAddr, err)
 	}
 
-	// Build CONNECT request
+	return doHTTPConnect(conn, address, p.proxyURL.User, timeout, p.config.Verbose)
+}
+
+// doHTTPConnect performs an HTTP CONNECT handshake over the provided connection.
+func doHTTPConnect(conn net.Conn, address string, user *url.Userinfo, timeout time.Duration, verbose bool) (net.Conn, error) {
 	targetHost, targetPort, err := net.SplitHostPort(address)
 	if err != nil {
-		// Assume the address includes the default port
 		targetHost = address
 		targetPort = "80"
 	}
@@ -63,71 +67,51 @@ func (p *HTTPProxy) Dial(network, address string) (net.Conn, error) {
 	req += fmt.Sprintf("Host: %s:%s\r\n", targetHost, targetPort)
 	req += "User-Agent: goconnect/1.0\r\n"
 
-	// Add authentication if present
-	if p.proxyURL.User != nil {
-		username := p.proxyURL.User.Username()
-		password, _ := p.proxyURL.User.Password()
+	if user != nil {
+		username := user.Username()
+		password, _ := user.Password()
 		auth := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
 		req += "Proxy-Authorization: Basic " + auth + "\r\n"
 	}
 
 	req += "\r\n"
 
-	if p.config.Verbose {
+	if verbose {
 		fmt.Fprintf(os.Stderr, "Sending CONNECT request for %s:%s\n", targetHost, targetPort)
 	}
 
-	// Send the request
+	if err := conn.SetWriteDeadline(time.Now().Add(timeout)); err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+
 	if _, err := conn.Write([]byte(req)); err != nil {
 		_ = conn.Close()
 		return nil, fmt.Errorf("failed to send CONNECT request: %w", err)
 	}
 
-	// Read the response
 	if err := conn.SetReadDeadline(time.Now().Add(timeout)); err != nil {
 		_ = conn.Close()
 		return nil, err
 	}
 
 	reader := bufio.NewReader(conn)
-	response, err := reader.ReadString('\n')
+	resp, err := http.ReadResponse(reader, &http.Request{Method: "CONNECT"})
 	if err != nil {
 		_ = conn.Close()
 		return nil, fmt.Errorf("failed to read proxy response: %w", err)
 	}
 
-	if p.config.Verbose {
-		fmt.Fprintf(os.Stderr, "Proxy response: %s", strings.TrimSpace(response))
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Proxy response: %s\n", resp.Status)
 	}
 
-	// Check for successful response (HTTP/1.1 200 or HTTP/1.0 200)
-	if !strings.Contains(response, "200") {
-		// Read rest of the response for error details
-		var rest string
-		for {
-			line, err := reader.ReadString('\n')
-			if err != nil || line == "\r\n" || line == "\n" {
-				break
-			}
-			rest += line
-		}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		_ = conn.Close()
-		return nil, fmt.Errorf("proxy connection failed: %s %s", strings.TrimSpace(response), strings.TrimSpace(rest))
+		return nil, fmt.Errorf("proxy connection failed: %s", resp.Status)
 	}
 
-	// Consume the rest of the headers
-	for {
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			_ = conn.Close()
-			return nil, fmt.Errorf("error reading response headers: %w", err)
-		}
-		if line == "\r\n" || line == "\n" {
-			break
-		}
-	}
-
-	if p.config.Verbose {
+	if verbose {
 		fmt.Fprintf(os.Stderr, "Tunnel established to %s\n", address)
 	}
 
@@ -137,5 +121,5 @@ func (p *HTTPProxy) Dial(network, address string) (net.Conn, error) {
 		return nil, err
 	}
 
-	return conn, nil
+	return newBufferedConn(conn, reader), nil
 }
