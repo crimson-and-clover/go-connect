@@ -5,10 +5,16 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sort"
 	"strconv"
 	"sync"
 	"time"
 )
+
+// Dialer connects to an address.
+type Dialer interface {
+	Dial(network, address string) (net.Conn, error)
+}
 
 // ScanResult represents the result of scanning a single port.
 type ScanResult struct {
@@ -25,13 +31,34 @@ type Scanner struct {
 	timeout time.Duration
 	verbose bool
 	workers int
+	dialer  Dialer
 }
 
 // NewScanner creates a new port scanner.
-func NewScanner(host string, startPort, endPort int, timeout time.Duration, verbose bool) *Scanner {
-	ports := make([]int, 0, endPort-startPort+1)
+func NewScanner(host string, startPort, endPort int, timeout time.Duration, verbose bool, dialer Dialer) *Scanner {
+	if timeout == 0 {
+		timeout = 2 * time.Second
+	}
+
+	portsCount := endPort - startPort + 1
+	if portsCount < 1 {
+		portsCount = 1
+	}
+	ports := make([]int, 0, portsCount)
 	for p := startPort; p <= endPort; p++ {
 		ports = append(ports, p)
+	}
+
+	workers := 100
+	if len(ports) < workers {
+		workers = len(ports)
+	}
+	if workers < 1 {
+		workers = 1
+	}
+
+	if dialer == nil {
+		dialer = &net.Dialer{Timeout: timeout}
 	}
 
 	return &Scanner{
@@ -39,22 +66,17 @@ func NewScanner(host string, startPort, endPort int, timeout time.Duration, verb
 		ports:   ports,
 		timeout: timeout,
 		verbose: verbose,
-		workers: 100,
+		workers: workers,
+		dialer:  dialer,
 	}
 }
 
 // NewSinglePortScanner creates a scanner for a single port check.
-func NewSinglePortScanner(host string, port int, timeout time.Duration, verbose bool) *Scanner {
-	return &Scanner{
-		host:    host,
-		ports:   []int{port},
-		timeout: timeout,
-		verbose: verbose,
-		workers: 1,
-	}
+func NewSinglePortScanner(host string, port int, timeout time.Duration, verbose bool, dialer Dialer) *Scanner {
+	return NewScanner(host, port, port, timeout, verbose, dialer)
 }
 
-// Scan performs the port scan and returns results.
+// Scan performs the port scan and returns sorted results.
 func (s *Scanner) Scan() []ScanResult {
 	results := make([]ScanResult, 0, len(s.ports))
 	var mu sync.Mutex
@@ -84,6 +106,12 @@ func (s *Scanner) Scan() []ScanResult {
 	close(portCh)
 
 	wg.Wait()
+
+	// Sort results by port number ascending
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].Port < results[j].Port
+	})
+
 	return results
 }
 
@@ -92,7 +120,7 @@ func (s *Scanner) scanPort(port int) ScanResult {
 	address := net.JoinHostPort(s.host, strconv.Itoa(port))
 	start := time.Now()
 
-	conn, err := net.DialTimeout("tcp", address, s.timeout)
+	conn, err := s.dialer.Dial("tcp", address)
 	latency := time.Since(start)
 
 	if err != nil {
@@ -127,12 +155,8 @@ func (s *Scanner) PrintResults(results []ScanResult) {
 }
 
 // CheckSinglePort checks if a single port is open.
-func CheckSinglePort(host string, port int, timeout time.Duration) bool {
-	address := net.JoinHostPort(host, strconv.Itoa(port))
-	conn, err := net.DialTimeout("tcp", address, timeout)
-	if err != nil {
-		return false
-	}
-	_ = conn.Close()
-	return true
+func CheckSinglePort(host string, port int, timeout time.Duration, dialer Dialer) bool {
+	scanner := NewSinglePortScanner(host, port, timeout, false, dialer)
+	results := scanner.Scan()
+	return len(results) > 0 && results[0].Open
 }

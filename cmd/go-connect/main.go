@@ -162,12 +162,28 @@ func runScanMode(opts *config.Options) error {
 		timeout = 2 * time.Second
 	}
 
-	if opts.Verbose {
-		fmt.Fprintf(os.Stderr, "Scanning %s ports %d-%d (timeout: %v)...\n",
-			opts.TargetHost, startPort, endPort, timeout)
+	dialerConfig := proxy.Config{
+		Timeout:            timeout,
+		InsecureSkipVerify: opts.InsecureSkipVerify,
+		Verbose:            false, // Keep proxy dialer quiet during scanning
 	}
 
-	scanner := netcat.NewScanner(opts.TargetHost, startPort, endPort, timeout, opts.Verbose)
+	dialer, err := proxy.NewDialer(opts.ProxyURL, dialerConfig)
+	if err != nil {
+		return err
+	}
+
+	if opts.Verbose {
+		if opts.ProxyURL != "" {
+			fmt.Fprintf(os.Stderr, "Scanning %s ports %d-%d via %s (timeout: %v)...\n",
+				opts.TargetHost, startPort, endPort, opts.ProxyURL, timeout)
+		} else {
+			fmt.Fprintf(os.Stderr, "Scanning %s ports %d-%d (timeout: %v)...\n",
+				opts.TargetHost, startPort, endPort, timeout)
+		}
+	}
+
+	scanner := netcat.NewScanner(opts.TargetHost, startPort, endPort, timeout, opts.Verbose, dialer)
 	results := scanner.Scan()
 	scanner.PrintResults(results)
 
