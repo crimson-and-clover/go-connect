@@ -23,6 +23,7 @@ type Options struct {
 	ListenPort         int
 	ShowVersion        bool
 	HexDump            bool // Hex dump incoming/outgoing traffic
+	UnixSocket         bool // Use Unix Domain Socket (-U)
 	TargetHost         string
 	TargetPort         string
 	ScanPorts          []int // Parsed ports for scan mode
@@ -45,6 +46,7 @@ func ParseArgs(arguments []string) (*Options, error) {
 	fs.BoolVar(&opts.Verbose, "v", false, "Verbose output")
 	fs.BoolVar(&opts.HexDump, "X", false, "Hex dump incoming and outgoing traffic")
 	fs.BoolVar(&opts.HexDump, "C", false, "Hex dump incoming and outgoing traffic (alias)")
+	fs.BoolVar(&opts.UnixSocket, "U", false, "Use Unix Domain Socket")
 	fs.BoolVar(&opts.ZeroMode, "z", false, "Zero I/O mode (port scanning)")
 	fs.BoolVar(&opts.ListenMode, "l", false, "Listen mode")
 	fs.IntVar(&opts.ListenPort, "p", 0, "Port to listen on")
@@ -53,6 +55,8 @@ func ParseArgs(arguments []string) (*Options, error) {
 
 	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] host port\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "       %s -U [options] socket_path\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "       %s -l -U [options] socket_path\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "       %s -z [options] host port(s)...\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "       %s -l -p port\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "\nOptions:\n")
@@ -73,6 +77,16 @@ func ParseArgs(arguments []string) (*Options, error) {
 	// If -w was explicitly set (non-zero), use it instead of -t
 	if *wFlag != 0 {
 		opts.Timeout = *wFlag
+	}
+
+	if opts.UnixSocket {
+		args := fs.Args()
+		if len(args) != 1 {
+			return nil, fmt.Errorf("unix socket mode requires socket path")
+		}
+		opts.TargetHost = args[0]
+		opts.TargetPort = ""
+		return opts, nil
 	}
 
 	if opts.ListenMode {
@@ -182,9 +196,9 @@ func ParsePortSpecs(specs []string) ([]int, error) {
 	return ports, nil
 }
 
-// TargetAddress returns the full target address (host:port).
+// TargetAddress returns the full target address (host:port or unix socket path).
 func (o *Options) TargetAddress() string {
-	if o.TargetPort == "" {
+	if o.UnixSocket || o.TargetPort == "" {
 		return o.TargetHost
 	}
 	return o.TargetHost + ":" + o.TargetPort

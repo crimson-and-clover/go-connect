@@ -35,7 +35,12 @@ func main() {
 	}
 
 	if opts.ListenMode {
-		listener := netcat.NewListener(opts.ListenPort, opts.Verbose, opts.HexDump)
+		var listener *netcat.Listener
+		if opts.UnixSocket {
+			listener = netcat.NewUnixListener(opts.TargetHost, opts.Verbose, opts.HexDump)
+		} else {
+			listener = netcat.NewListener(opts.ListenPort, opts.Verbose, opts.HexDump)
+		}
 		if err := listener.Listen(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -61,7 +66,12 @@ func runClient(opts *config.Options) error {
 	var conn net.Conn
 	var err error
 
-	if opts.TLSEnable {
+	if opts.UnixSocket {
+		if opts.Verbose {
+			fmt.Fprintf(os.Stderr, "Connecting to unix socket %s\n", opts.TargetHost)
+		}
+		conn, err = net.DialTimeout("unix", opts.TargetHost, opts.Timeout)
+	} else if opts.TLSEnable {
 		// TLS direct connection or via proxy
 		conn, err = dialWithTLS(opts)
 	} else {

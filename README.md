@@ -107,6 +107,14 @@ go-connect -l -p 8080
 
 # With verbose output
 go-connect -l -p 8080 -v
+### Unix Domain Socket
+
+```bash
+# Connect to local Unix Domain Socket (e.g. Docker daemon)
+echo -e "GET /v1.41/containers/json HTTP/1.0\r\n\r\n" | go-connect -U /var/run/docker.sock
+
+# Listen on a Unix Domain Socket
+go-connect -l -U /tmp/test.sock
 ```
 
 ## Options
@@ -118,6 +126,7 @@ go-connect -l -p 8080 -v
 | `-k` | Skip TLS certificate verification |
 | `-t duration` | Connection timeout (default: 30s) |
 | `-v` | Verbose output |
+| `-U` | Use Unix Domain Socket |
 | `-z` | Zero I/O mode (port scanning) |
 | `-l` | Listen mode |
 | `-p port` | Port to listen on (with -l) |

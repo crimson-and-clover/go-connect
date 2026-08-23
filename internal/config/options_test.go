@@ -49,6 +49,7 @@ func TestParseArgs(t *testing.T) {
 		wantTout  time.Duration
 		wantVerb  bool
 		wantHex   bool
+		wantUnix  bool
 		wantZero  bool
 		wantList  bool
 		wantLPort int
@@ -59,6 +60,21 @@ func TestParseArgs(t *testing.T) {
 			args:     []string{"example.com", "80"},
 			wantHost: "example.com",
 			wantPort: "80",
+			wantTout: 30 * time.Second,
+		},
+		{
+			name:     "unix socket client connection",
+			args:     []string{"-U", "/var/run/docker.sock"},
+			wantHost: "/var/run/docker.sock",
+			wantUnix: true,
+			wantTout: 30 * time.Second,
+		},
+		{
+			name:     "unix socket listen mode",
+			args:     []string{"-l", "-U", "/tmp/app.sock"},
+			wantHost: "/tmp/app.sock",
+			wantUnix: true,
+			wantList: true,
 			wantTout: 30 * time.Second,
 		},
 		{
@@ -158,6 +174,9 @@ func TestParseArgs(t *testing.T) {
 			}
 			if opts.HexDump != tt.wantHex {
 				t.Errorf("HexDump = %v, want %v", opts.HexDump, tt.wantHex)
+			}
+			if opts.UnixSocket != tt.wantUnix {
+				t.Errorf("UnixSocket = %v, want %v", opts.UnixSocket, tt.wantUnix)
 			}
 			if opts.ZeroMode != tt.wantZero {
 				t.Errorf("ZeroMode = %v, want %v", opts.ZeroMode, tt.wantZero)

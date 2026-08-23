@@ -10,32 +10,52 @@ import (
 	"syscall"
 )
 
-// Listener provides listen mode functionality.
+// Listener provides listen mode functionality for TCP and Unix domain sockets.
 type Listener struct {
-	port    int
+	network string
+	address string
 	verbose bool
 	hexDump bool
 }
 
-// NewListener creates a new listener.
+// NewListener creates a new TCP listener.
 func NewListener(port int, verbose bool, hexDump bool) *Listener {
 	return &Listener{
-		port:    port,
+		network: "tcp",
+		address: fmt.Sprintf(":%d", port),
 		verbose: verbose,
 		hexDump: hexDump,
 	}
 }
 
-// Listen starts listening on the specified port.
+// NewUnixListener creates a new Unix Domain Socket listener.
+func NewUnixListener(socketPath string, verbose bool, hexDump bool) *Listener {
+	return &Listener{
+		network: "unix",
+		address: socketPath,
+		verbose: verbose,
+		hexDump: hexDump,
+	}
+}
+
+// Listen starts listening on the specified network address.
 func (l *Listener) Listen() error {
-	address := fmt.Sprintf(":%d", l.port)
-	ln, err := net.Listen("tcp", address)
+	if l.network == "unix" {
+		_ = os.Remove(l.address)
+		defer func() { _ = os.Remove(l.address) }()
+	}
+
+	ln, err := net.Listen(l.network, l.address)
 	if err != nil {
-		return fmt.Errorf("failed to listen on %s: %w", address, err)
+		return fmt.Errorf("failed to listen on %s (%s): %w", l.address, l.network, err)
 	}
 	defer func() { _ = ln.Close() }()
 
-	fmt.Fprintf(os.Stderr, "Listening on port %d...\n", l.port)
+	if l.network == "unix" {
+		fmt.Fprintf(os.Stderr, "Listening on unix socket %s...\n", l.address)
+	} else {
+		fmt.Fprintf(os.Stderr, "Listening on %s...\n", l.address)
+	}
 
 	// Handle shutdown signal
 	sigCh := make(chan os.Signal, 1)
