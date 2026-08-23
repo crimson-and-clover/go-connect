@@ -9,7 +9,6 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -93,30 +92,31 @@ func runClient(opts *config.Options) error {
 	// Handle graceful shutdown
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
 
-	// Bidirectional copy
-	var wg sync.WaitGroup
-	wg.Add(2)
+	remoteDone := make(chan struct{})
+	stdinDone := make(chan struct{})
 
+	// Stdin -> Conn (sends half-close FIN on stdin EOF)
 	go func() {
-		defer wg.Done()
 		_, _ = io.Copy(conn, os.Stdin)
+		if cw, ok := conn.(interface{ CloseWrite() error }); ok {
+			_ = cw.CloseWrite()
+		}
+		close(stdinDone)
 	}()
 
+	// Conn -> Stdout
 	go func() {
-		defer wg.Done()
 		_, _ = io.Copy(os.Stdout, conn)
-	}()
-
-	// Wait for either direction to finish or signal
-	done := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(done)
+		close(remoteDone)
 	}()
 
 	select {
-	case <-done:
+	case <-remoteDone:
+		if opts.Verbose {
+			fmt.Fprintln(os.Stderr, "Connection closed by remote")
+		}
 	case <-sigCh:
 		if opts.Verbose {
 			fmt.Fprintln(os.Stderr, "\nInterrupted")

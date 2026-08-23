@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 )
 
@@ -76,31 +75,30 @@ func (l *Listener) handleConnection(conn net.Conn) error {
 	// Handle shutdown signal
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
 
-	// Bidirectional copy
-	var wg sync.WaitGroup
-	wg.Add(2)
+	remoteDone := make(chan struct{})
+	stdinDone := make(chan struct{})
 
+	// Stdin -> Conn (sends half-close FIN on stdin EOF)
 	go func() {
-		defer wg.Done()
 		_, _ = io.Copy(conn, os.Stdin)
+		if cw, ok := conn.(interface{ CloseWrite() error }); ok {
+			_ = cw.CloseWrite()
+		}
+		close(stdinDone)
 	}()
 
+	// Conn -> Stdout
 	go func() {
-		defer wg.Done()
 		_, _ = io.Copy(os.Stdout, conn)
-	}()
-
-	done := make(chan struct{})
-	go func() {
-		wg.Wait()
-		close(done)
+		close(remoteDone)
 	}()
 
 	select {
-	case <-done:
+	case <-remoteDone:
 		if l.verbose {
-			fmt.Fprintln(os.Stderr, "Connection closed")
+			fmt.Fprintln(os.Stderr, "Connection closed by remote")
 		}
 	case <-sigCh:
 		if l.verbose {
