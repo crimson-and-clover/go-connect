@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 )
 
@@ -13,13 +14,15 @@ import (
 type Listener struct {
 	port    int
 	verbose bool
+	hexDump bool
 }
 
 // NewListener creates a new listener.
-func NewListener(port int, verbose bool) *Listener {
+func NewListener(port int, verbose bool, hexDump bool) *Listener {
 	return &Listener{
 		port:    port,
 		verbose: verbose,
+		hexDump: hexDump,
 	}
 }
 
@@ -37,6 +40,7 @@ func (l *Listener) Listen() error {
 	// Handle shutdown signal
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(sigCh)
 
 	// Accept connections in a goroutine
 	connCh := make(chan net.Conn, 1)
@@ -80,9 +84,18 @@ func (l *Listener) handleConnection(conn net.Conn) error {
 	remoteDone := make(chan struct{})
 	stdinDone := make(chan struct{})
 
+	var dumpMu sync.Mutex
+	var stdinWriter io.Writer = conn
+	var stdoutWriter io.Writer = os.Stdout
+
+	if l.hexDump {
+		stdinWriter = NewHexDumpWriter(conn, ">>> Sent", &dumpMu)
+		stdoutWriter = NewHexDumpWriter(os.Stdout, "<<< Received", &dumpMu)
+	}
+
 	// Stdin -> Conn (sends half-close FIN on stdin EOF)
 	go func() {
-		_, _ = io.Copy(conn, os.Stdin)
+		_, _ = io.Copy(stdinWriter, os.Stdin)
 		if cw, ok := conn.(interface{ CloseWrite() error }); ok {
 			_ = cw.CloseWrite()
 		}
@@ -91,7 +104,7 @@ func (l *Listener) handleConnection(conn net.Conn) error {
 
 	// Conn -> Stdout
 	go func() {
-		_, _ = io.Copy(os.Stdout, conn)
+		_, _ = io.Copy(stdoutWriter, conn)
 		close(remoteDone)
 	}()
 

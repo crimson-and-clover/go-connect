@@ -48,6 +48,7 @@ func TestParseArgs(t *testing.T) {
 		wantSkip  bool
 		wantTout  time.Duration
 		wantVerb  bool
+		wantHex   bool
 		wantZero  bool
 		wantList  bool
 		wantLPort int
@@ -58,6 +59,14 @@ func TestParseArgs(t *testing.T) {
 			args:     []string{"example.com", "80"},
 			wantHost: "example.com",
 			wantPort: "80",
+			wantTout: 30 * time.Second,
+		},
+		{
+			name:     "connection with hexdump -X",
+			args:     []string{"-X", "example.com", "80"},
+			wantHost: "example.com",
+			wantPort: "80",
+			wantHex:  true,
 			wantTout: 30 * time.Second,
 		},
 		{
@@ -139,6 +148,9 @@ func TestParseArgs(t *testing.T) {
 			}
 			if opts.Verbose != tt.wantVerb {
 				t.Errorf("Verbose = %v, want %v", opts.Verbose, tt.wantVerb)
+			}
+			if opts.HexDump != tt.wantHex {
+				t.Errorf("HexDump = %v, want %v", opts.HexDump, tt.wantHex)
 			}
 			if opts.ZeroMode != tt.wantZero {
 				t.Errorf("ZeroMode = %v, want %v", opts.ZeroMode, tt.wantZero)

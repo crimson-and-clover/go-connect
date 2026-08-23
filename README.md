@@ -118,6 +118,7 @@ go-connect -l -p 8080 -v
 | `-l` | Listen mode |
 | `-p port` | Port to listen on (with -l) |
 | `-w duration` | Timeout alias (nc compatible) |
+| `-X` | Hex dump incoming and outgoing traffic |
 | `-V` | Show version |
 
 ## Examples

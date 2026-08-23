@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -36,7 +37,7 @@ func main() {
 	}
 
 	if opts.ListenMode {
-		listener := netcat.NewListener(opts.ListenPort, opts.Verbose)
+		listener := netcat.NewListener(opts.ListenPort, opts.Verbose, opts.HexDump)
 		if err := listener.Listen(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 			os.Exit(1)
@@ -107,9 +108,18 @@ func runClient(opts *config.Options) error {
 	remoteDone := make(chan struct{})
 	stdinDone := make(chan struct{})
 
+	var dumpMu sync.Mutex
+	var stdinWriter io.Writer = conn
+	var stdoutWriter io.Writer = os.Stdout
+
+	if opts.HexDump {
+		stdinWriter = netcat.NewHexDumpWriter(conn, ">>> Sent", &dumpMu)
+		stdoutWriter = netcat.NewHexDumpWriter(os.Stdout, "<<< Received", &dumpMu)
+	}
+
 	// Stdin -> Conn (sends half-close FIN on stdin EOF)
 	go func() {
-		_, _ = io.Copy(conn, os.Stdin)
+		_, _ = io.Copy(stdinWriter, os.Stdin)
 		if cw, ok := conn.(interface{ CloseWrite() error }); ok {
 			_ = cw.CloseWrite()
 		}
@@ -118,7 +128,7 @@ func runClient(opts *config.Options) error {
 
 	// Conn -> Stdout
 	go func() {
-		_, _ = io.Copy(os.Stdout, conn)
+		_, _ = io.Copy(stdoutWriter, conn)
 		close(remoteDone)
 	}()
 

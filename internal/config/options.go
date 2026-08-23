@@ -19,6 +19,7 @@ type Options struct {
 	ListenMode         bool
 	ListenPort         int
 	ShowVersion        bool
+	HexDump            bool // Hex dump incoming/outgoing traffic
 	TargetHost         string
 	TargetPort         string
 }
@@ -38,6 +39,8 @@ func ParseArgs(arguments []string) (*Options, error) {
 	fs.BoolVar(&opts.InsecureSkipVerify, "k", false, "Skip TLS certificate verification")
 	fs.DurationVar(&opts.Timeout, "t", 30*time.Second, "Connection timeout")
 	fs.BoolVar(&opts.Verbose, "v", false, "Verbose output")
+	fs.BoolVar(&opts.HexDump, "X", false, "Hex dump incoming and outgoing traffic")
+	fs.BoolVar(&opts.HexDump, "C", false, "Hex dump incoming and outgoing traffic (alias)")
 	fs.BoolVar(&opts.ZeroMode, "z", false, "Zero I/O mode (port scanning)")
 	fs.BoolVar(&opts.ListenMode, "l", false, "Listen mode")
 	fs.IntVar(&opts.ListenPort, "p", 0, "Port to listen on")
