@@ -25,30 +25,38 @@ type Options struct {
 
 // Parse parses command-line arguments and returns Options.
 func Parse() (*Options, error) {
+	return ParseArgs(os.Args[1:])
+}
+
+// ParseArgs parses arguments from a given string slice.
+func ParseArgs(arguments []string) (*Options, error) {
 	opts := &Options{}
+	fs := flag.NewFlagSet("go-connect", flag.ContinueOnError)
 
-	flag.StringVar(&opts.ProxyURL, "x", "", "Proxy URL (http://host:port, socks5://host:port, etc.)")
-	flag.BoolVar(&opts.TLSEnable, "T", false, "Enable TLS")
-	flag.BoolVar(&opts.InsecureSkipVerify, "k", false, "Skip TLS certificate verification")
-	flag.DurationVar(&opts.Timeout, "t", 30*time.Second, "Connection timeout")
-	flag.BoolVar(&opts.Verbose, "v", false, "Verbose output")
-	flag.BoolVar(&opts.ZeroMode, "z", false, "Zero I/O mode (port scanning)")
-	flag.BoolVar(&opts.ListenMode, "l", false, "Listen mode")
-	flag.IntVar(&opts.ListenPort, "p", 0, "Port to listen on")
-	flag.BoolVar(&opts.ShowVersion, "V", false, "Show version")
-	flag.BoolVar(&opts.ShowVersion, "version", false, "Show version")
+	fs.StringVar(&opts.ProxyURL, "x", "", "Proxy URL (http://host:port, socks5://host:port, etc.)")
+	fs.BoolVar(&opts.TLSEnable, "T", false, "Enable TLS")
+	fs.BoolVar(&opts.InsecureSkipVerify, "k", false, "Skip TLS certificate verification")
+	fs.DurationVar(&opts.Timeout, "t", 30*time.Second, "Connection timeout")
+	fs.BoolVar(&opts.Verbose, "v", false, "Verbose output")
+	fs.BoolVar(&opts.ZeroMode, "z", false, "Zero I/O mode (port scanning)")
+	fs.BoolVar(&opts.ListenMode, "l", false, "Listen mode")
+	fs.IntVar(&opts.ListenPort, "p", 0, "Port to listen on")
+	fs.BoolVar(&opts.ShowVersion, "V", false, "Show version")
+	fs.BoolVar(&opts.ShowVersion, "version", false, "Show version")
 
-	flag.Usage = func() {
+	fs.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options] host port\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "       %s -l -p port\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "\nOptions:\n")
-		flag.PrintDefaults()
+		fs.PrintDefaults()
 	}
 
 	// Custom -w flag that overrides -t
-	wFlag := flag.Duration("w", 0, "Timeout (alias, nc compatible)")
+	wFlag := fs.Duration("w", 0, "Timeout (alias, nc compatible)")
 
-	flag.Parse()
+	if err := fs.Parse(arguments); err != nil {
+		return nil, err
+	}
 
 	if opts.ShowVersion {
 		return opts, nil
@@ -67,7 +75,7 @@ func Parse() (*Options, error) {
 	}
 
 	// Validate target host and port
-	args := flag.Args()
+	args := fs.Args()
 	if opts.ZeroMode && len(args) >= 2 {
 		// Port scanning mode can have host and port range
 		opts.TargetHost = args[0]
